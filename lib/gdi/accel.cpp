@@ -17,9 +17,11 @@
 gAccel *gAccel::instance;
 
 #if not defined(HAVE_HISILICON_ACCEL)
+#if not defined(__sh__)
 #define BCM_ACCEL
 #else
 #define STMFB_ACCEL
+#endif
 #endif
 
 #ifdef HAVE_HISILICON_ACCEL 
@@ -51,6 +53,7 @@ extern void stmfb_accel_fill(
 		int x, int y, int width, int height,
 		unsigned long color);
 #endif
+
 #ifdef BCM_ACCEL
 extern int bcm_accel_init(void);
 extern void bcm_accel_close(void);
@@ -423,7 +426,7 @@ int gAccel::accelAlloc(gUnmanagedSurface* surface)
 		}
 	}
 
-	eDebug("[gAccel] accel alloc failed\n");
+	eDebug("[gAccel] alloc failed");
 	return -3;
 }
 
