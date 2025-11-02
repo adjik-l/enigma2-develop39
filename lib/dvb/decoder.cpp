@@ -1,7 +1,6 @@
 #include <lib/base/cfile.h>
 #include <lib/base/ebase.h>
 #include <lib/base/eerror.h>
-#include <lib/base/nconfig.h> // access to python config
 #include <lib/base/wrappers.h>
 #include <lib/dvb/decoder.h>
 #include <lib/components/tuxtxtapp.h>
@@ -68,12 +67,10 @@ eDVBAudio::eDVBAudio(eDVBDemux *demux, int dev)
 		m_fd_demux = -1;
 	}
 
-#ifndef DREAMBOX
 	if (m_fd >= 0)
 	{
 		::ioctl(m_fd, AUDIO_SELECT_SOURCE, demux ? AUDIO_SOURCE_DEMUX : AUDIO_SOURCE_HDMI);
 	}
-#endif
 }
 
 int eDVBAudio::startPid(int pid, int type)
@@ -151,11 +148,11 @@ int eDVBAudio::startPid(int pid, int type)
 			break;
 		case aDDP:
 #ifdef DREAMBOX
-		bypass = 7;
+			bypass = 7;
 #else
-		bypass = 0x22;
+			bypass = 0x22;
 #endif
-		break;
+			break;
 		}
 
 		eDebugNoNewLineStart("[eDVBAudio%d] AUDIO_SET_BYPASS bypass=%d ", m_dev, bypass);
@@ -315,14 +312,10 @@ eDVBVideo::eDVBVideo(eDVBDemux *demux, int dev, bool fcc_enable)
 		m_fd_demux = -1;
 	}
 
-std::string zapmodeDM = eConfigManager::getConfigValue("config.misc.zapmodeDM");
-if (zapmodeDM == "hold")
-{
 	if (m_fd >= 0)
 	{
 		::ioctl(m_fd, VIDEO_SELECT_SOURCE, demux ? VIDEO_SOURCE_DEMUX : VIDEO_SOURCE_HDMI);
 	}
-}
 
 	if (m_close_invalidates_attributes < 0)
 	{
@@ -949,8 +942,11 @@ int eTSMPEGDecoder::setState()
 		if (m_text)
 		{
 			m_text->stop();
-			if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder
+			if (m_demux && m_decoder == 0 && m_is_streamx == 0)	// Tuxtxt caching actions only on primary decoder and not stream
+			{
+				eDebug("[decoder][eDVBText] stopCaching");
 				eTuxtxtApp::getInstance()->stopCaching();
+			}
 		}
 		m_text = 0;
 	}
@@ -989,20 +985,26 @@ int eTSMPEGDecoder::setState()
 	{
 		if ((m_textpid >= 0) && (m_textpid < 0x1FFF) && !nott)
 		{
+			eDebug("[decoder][eDVBText] startPID entry  M_is_stream %d", m_is_streamx);	// m_is_streamx set in servicedvb 0 = false 1 = stream
 			m_text = new eDVBTText(m_demux, m_decoder);
 			if (m_text->startPid(m_textpid))
-				res = -1;
-
-			if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder
 			{
+				eDebug("[decoder][eDVBText] startPID");
+				res = -1;
+			}
+			if (m_demux && m_decoder == 0 && m_is_streamx == 0)	// Tuxtxt caching actions only on primary decoder and not stream = false(0)
+			{
+				eDebug("[decoder][eDVBText] startCaching  M_is_stream %d", m_is_streamx);
 				uint8_t demux = 0;
 				m_demux->getCADemuxID(demux);
 				eTuxtxtApp::getInstance()->startCaching(m_textpid, demux);
 			}
 		}
 		else if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder
+		{
+			eDebug("[decoder][eDVBText] resetPID");
 			eTuxtxtApp::getInstance()->resetPid();
-
+		}
 		m_changed &= ~changeText;
 	}
 
@@ -1102,7 +1104,10 @@ eTSMPEGDecoder::eTSMPEGDecoder(eDVBDemux *demux, int decoder)
 	m_has_audio = !access(filename, W_OK);
 
 	if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder
+	{
+		eDebug("[decoder][eDVBText] initCache");
 		eTuxtxtApp::getInstance()->initCache();
+	}
 }
 
 eTSMPEGDecoder::~eTSMPEGDecoder()
@@ -1115,7 +1120,10 @@ eTSMPEGDecoder::~eTSMPEGDecoder()
 	fccFreeFD();
 
 	if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder
+	{
+		eDebug("[decoder][eDVBText] freeCache");
 		eTuxtxtApp::getInstance()->freeCache();
+	}
 }
 
 RESULT eTSMPEGDecoder::setVideoPID(int vpid, int type)
