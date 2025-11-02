@@ -942,7 +942,7 @@ int eTSMPEGDecoder::setState()
 		if (m_text)
 		{
 			m_text->stop();
-			if (m_demux && m_decoder == 0 && m_is_streamx == 0)	// Tuxtxt caching actions only on primary decoder and not stream
+			if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder and not stream
 			{
 				eDebug("[decoder][eDVBText] stopCaching");
 				eTuxtxtApp::getInstance()->stopCaching();
@@ -992,7 +992,7 @@ int eTSMPEGDecoder::setState()
 				eDebug("[decoder][eDVBText] startPID");
 				res = -1;
 			}
-			if (m_demux && m_decoder == 0 && m_is_streamx == 0)	// Tuxtxt caching actions only on primary decoder and not stream = false(0)
+			if (m_demux && m_decoder == 0)	// Tuxtxt caching actions only on primary decoder and not stream = false(0)
 			{
 				eDebug("[decoder][eDVBText] startCaching  M_is_stream %d", m_is_streamx);
 				uint8_t demux = 0;
