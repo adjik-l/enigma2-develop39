@@ -4,10 +4,9 @@
 #include <lib/base/init_num.h>
 
 #include <lib/gdi/accel.h>
-#ifdef CONFIG_ION
-#include <lib/gdi/grc.h>
-#endif
+
 #include <time.h>
+#include <sys/time.h>
 
 #ifdef USE_LIBVUGLES2
 #include <vuplus_gles.h>
@@ -27,7 +26,6 @@ extern void bcm_accel_blit(
 		int dst_x, int dst_y, int dwidth, int dheight,
 		int pal_addr, int flags);
 #endif
-
 #ifdef HAVE_HISILICON_ACCEL
 extern void  dinobot_accel_register(void *p1,void *p2);
 extern void  dinibot_accel_notify(void);
@@ -314,6 +312,9 @@ void gFBDC::setResolution(int xres, int yres, int bpp)
 	surface.bypp = bpp / 8;
 	surface.stride = fb->Stride();
 	surface.data = fb->lfb;
+	
+	for (int y=0; y<yres; y++)    // make whole screen transparent 
+		memset(fb->lfb+ y * xres * 4, 0x00, xres * 4);	
 
 	surface.data_phys = fb->getPhysAddr();
 
@@ -331,13 +332,14 @@ void gFBDC::setResolution(int xres, int yres, int bpp)
 		surface_back.data = 0;
 		surface_back.data_phys = 0;
 	}
+
+	eDebug("[gFBDC] resolution: %d x %d x %d (stride: %d) pages: %d", surface.x, surface.y, surface.bpp, fb->Stride(), fb->getNumPages());
+
 #ifndef CONFIG_ION
-	eDebug("[gFBDC] resolution: %dx%dx%d stride=%d, %dkB available for acceleration surfaces.",
-		 surface.x, surface.y, surface.bpp, fb->Stride(), (fb->Available() - fb_size)/1024);
+	/* accel is already set in fb.cpp */
+	eDebug("[gFBDC] %dkB available for acceleration surfaces.", (fb->Available() - fb_size)/1024);
 	if (gAccel::getInstance())
 		gAccel::getInstance()->setAccelMemorySpace(fb->lfb + fb_size, surface.data_phys + fb_size, fb->Available() - fb_size);
-#else
-	eDebug("[gFBDC] resolution: %d x %d x %d (stride: %d) pages: %d", surface.x, surface.y, surface.bpp, fb->Stride(), fb->getNumPages());
 #endif
 #ifdef HAVE_HISILICON_ACCEL
 	dinobot_accel_register(&surface,&surface_back);
